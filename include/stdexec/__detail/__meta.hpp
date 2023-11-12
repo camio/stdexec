@@ -703,6 +703,33 @@ namespace stdexec {
   template <class _Ty>
   using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
 
+  template <class _Ty>
+  struct _Id;
+
+  template <class _Ty>
+  struct __fwd_tag_invoke;
+
+  template <class _Ty>
+  using __interface_ = typename _Ty::template __interface<_Id<_Ty>>;
+
+  template <class _Ty>
+  using __interface_for = __meval_or<__interface_, __fwd_tag_invoke<_Id<_Ty>>, _Ty>;
+
+  template <class _Ty>
+  struct _Id : _Ty, __interface_for<_Ty> {
+    _Id() = default;
+    using _Ty::_Ty;
+
+    struct __t : _Ty {
+      __t() = default;
+      using _Ty::_Ty;
+      using __id = _Ty;
+    };
+  };
+
+  template <class _Ty>
+  using __noadl = _Id<__t<_Id<_Ty>>>;
+
   template <class _From, class _To = __decay_t<_From>>
   using __cvref_t = __copy_cvref_t<_From, __t<_To>>;
 
@@ -1161,3 +1188,44 @@ namespace stdexec {
       __mtry_catch<__mcompose<__q<__mdispatch>, __which<_Signatures>>, _DefaultFn>,
       _Args...>;
 } // namespace stdexec
+
+namespace std {
+  // void __std_is_associated__(auto&&) {}
+
+  // namespace _Detail {
+  //   void __std_is_associated__();
+
+  //   template <class _Ty>
+  //   concept __std_is_associated =
+  //     requires (_Ty&& __ty) {
+  //       __std_is_associated__((_Ty&&) __ty);
+  //     };
+
+  //   void get();
+
+  //   template <size_t _Np, class _Ty>
+  //   constexpr auto __get(_Ty&& __ty) noexcept(noexcept(get<_Np>((_Ty&&) __ty)))
+  //     -> stdexec::__msecond<
+  //           stdexec::__if_c<!__std_is_associated<_Ty>>,
+  //           decltype(get<_Np>((_Ty&&) __ty))> {
+  //     return get<_Np>((_Ty&&) __ty);
+  //   }
+  // }
+
+  // template <size_t _Np, class _Ty>
+  // constexpr auto get(_Ty&& __ty) noexcept(noexcept(_Detail::__get<_Np>((_Ty&&) __ty)))
+  //   -> decltype(_Detail::__get<_Np>((_Ty&&) __ty)) {
+  //   return _Detail::__get<_Np>((_Ty&&) __ty);
+  // }
+
+  template <class _Ty>
+    requires (sizeof(tuple_size<stdexec::__id<_Ty>>) != 0)
+  struct tuple_size<stdexec::_Id<_Ty>>
+    : tuple_size<stdexec::__id<_Ty>> {
+  };
+
+  template <size_t _Np, class _Ty>
+  struct tuple_element<_Np, stdexec::_Id<_Ty>>
+    : tuple_element<_Np, stdexec::__id<_Ty>> {
+  };
+}

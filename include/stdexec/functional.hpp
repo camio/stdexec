@@ -366,4 +366,17 @@ namespace stdexec {
   using __tag_invoke::nothrow_tag_invocable;
   using __tag_invoke::tag_invoke_result_t;
   using __tag_invoke::tag_invoke_result;
+
+  template <class _Ty>
+  struct __fwd_tag_invoke {
+    template <class _Tag, __decays_to<_Ty> _Self, class... _Args>
+      requires tag_invocable<_Tag, __cvref_id<_Self>, _Args...>
+    STDEXEC_ATTRIBUTE((always_inline))
+    friend constexpr auto tag_invoke(_Tag, _Self&& __self, _Args&&... __args)
+      noexcept(nothrow_tag_invocable<_Tag, __cvref_id<_Self>, _Args...>)
+      -> tag_invoke_result_t<_Tag, __cvref_id<_Self>, _Args...> {
+      return tag_invoke(_Tag(), static_cast<__cvref_id<_Self>&&>((_Self&&) __self), (_Args&&) __args...);
+    }
+  };
+
 } // namespace stdexec

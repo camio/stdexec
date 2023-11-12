@@ -50,10 +50,41 @@ STDEXEC_PRAGMA_IGNORE_EDG(1302)
 STDEXEC_PRAGMA_IGNORE_EDG(497)
 STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
 
+
+namespace std {
+  template <class... _Queries>
+  struct tuple_size<stdexec::__env::__queries<_Queries...>>
+    : std::integral_constant<std::size_t, sizeof...(_Queries)> {
+  };
+
+  template <size_t _Np, class... _Queries>
+  struct tuple_element<_Np, stdexec::__env::__queries<_Queries...>> {
+    using type = stdexec::__m_at_c<_Np, _Queries...>;
+  };
+}
+
 namespace stdexec {
+  namespace __queries {
+    struct queries_t {
+      template <class _Queryable>
+        requires tag_invocable<queries_t, const _Queryable&>
+      constexpr auto operator()(const _Queryable& __queryable) const noexcept
+        -> tag_invoke_result_t<queries_t, const _Queryable&> {
+        static_assert(nothrow_tag_invocable<queries_t, const _Queryable&>);
+        return tag_invoke(*this, __queryable);
+      }
+    };
+  }
+
+  using __queries::queries_t;
+  inline constexpr queries_t queries {};
+
   // [exec.queries.queryable]
   template <class T>
-  concept queryable = destructible<T>;
+  concept queryable = //
+    destructible<T>   //
+    //&& __callable<queries_t, T>
+    ;
 
   template <class Tag>
   struct __query {
@@ -114,10 +145,6 @@ namespace stdexec {
       __tag.apply_sender((_Args&&) __args...);
     };
   } // namespace __domain
-
-  namespace __write_ {
-    struct __write_t;
-  }
 
   struct default_domain {
     default_domain() = default;
@@ -403,9 +430,24 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // env_of
   namespace __env {
+    template <class... _Queries>
+    struct __queries {
+      template <std::size_t _Idx>
+      friend auto get(const __queries&) noexcept {
+        return __m_at_c<_Idx, _Queries...>();
+      }
+    };
+
+    template <class... _Queries>
+    using __make_queries = __noadl<__queries<_Queries...>>;
+
     struct empty_env {
       using __t = empty_env;
       using __id = empty_env;
+
+      friend auto tag_invoke(queries_t, empty_env) noexcept {
+        return __make_queries<>();
+      }
     };
 
     template <class _Descriptor>
@@ -601,6 +643,7 @@ namespace stdexec {
   using __empty_env [[deprecated("Please use stdexec::empty_env now.")]] = empty_env;
 
   using __env::__env_promise;
+  using __env::__make_queries;
 
   inline constexpr __env::__make_env_t __make_env{};
   inline constexpr __env::__join_env_t __join_env{};

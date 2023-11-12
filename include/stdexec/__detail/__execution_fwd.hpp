@@ -49,6 +49,9 @@ namespace stdexec {
   namespace __env {
     struct get_env_t;
     struct empty_env;
+
+    template <class... _Queries>
+    struct __queries;
   }
 
   using __env::empty_env;
