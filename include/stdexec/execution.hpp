@@ -3781,7 +3781,7 @@ namespace stdexec {
         };
 
       template <class _State, class _Receiver, class... _As>
-      static void __bind(_State&& __state, _Receiver&& __rcvr, _As&&... __as) noexcept {
+      static void __bind(_State& __state, _Receiver& __rcvr, _As&&... __as) noexcept {
         try {
           using __fun_t = typename _State::__fun_t;
           using __sched_t = typename _State::__sched_t;
@@ -3808,7 +3808,7 @@ namespace stdexec {
           _Tag,
           _As&&... __as) noexcept -> void {
         if constexpr (std::same_as<_Tag, _SetTag>) {
-          __bind((_State&&) __state, (_Receiver&&) __rcvr, (_As&&) __as...);
+          __bind(__state, __rcvr, (_As&&) __as...);
         } else {
           _Tag()((_Receiver&&) __rcvr, (_As&&) __as...);
         }
